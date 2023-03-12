@@ -157,3 +157,25 @@ class PerfectEdgeClassification(nn.Module):
             false_mask = data.pt < self.false_below_pt
             r[false_mask] = False
         return r
+
+
+def symmetrize_edge_weights(edge_indices: Tensor, edge_weights: Tensor) -> Tensor:
+    edge_dict = {}
+    for i in range(edge_indices.size(1)):
+        a, b = edge_indices[0, i].item(), edge_indices[1, i].item()
+        w = edge_weights[i].item()
+        edge_dict[(a, b)] = w
+
+    for i in range(edge_indices.size(1)):
+        a, b = edge_indices[0, i].item(), edge_indices[1, i].item()
+        w = edge_weights[i].item()
+        if (b, a) in edge_dict:
+            w_opposite = edge_dict[(b, a)]
+            avg_weight = (w + w_opposite) / 2
+            edge_dict[(a, b)] = avg_weight
+            edge_dict[(b, a)] = avg_weight
+
+    symmetrized_weights = Tensor(
+        [edge_dict[(a, b)] for a, b in zip(edge_indices[0], edge_indices[1])]
+    )
+    return symmetrized_weights
