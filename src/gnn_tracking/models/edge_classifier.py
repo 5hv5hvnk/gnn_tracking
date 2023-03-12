@@ -160,16 +160,10 @@ class PerfectEdgeClassification(nn.Module):
 
 
 def symmetrize_edge_weights(edge_indices: Tensor, edge_weights: Tensor) -> Tensor:
-    # Find the indices of the opposite edges (b, a)
     reverse_indices = edge_indices.flip(0)
-
-    # Find the mask of the opposite edges (b, a) that exist in the input
     mask = (edge_indices.unsqueeze(1) == reverse_indices.unsqueeze(2)).all(0).any(0)
-
-    # Compute the symmetrized weights using indexing and broadcasting
     symmetrized_weights = (edge_weights + edge_weights[mask]) / 2
 
-    # Construct a new tensor with the symmetrized weights
     symmetrized_weights_all = Tensor(
         torch.zeros(
             edge_weights.size(0), dtype=edge_weights.dtype, device=edge_weights.device
