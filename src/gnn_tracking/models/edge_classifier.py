@@ -160,22 +160,20 @@ class PerfectEdgeClassification(nn.Module):
 
 
 def symmetrize_edge_weights(edge_indices: Tensor, edge_weights: Tensor) -> Tensor:
-    edge_dict = {}
-    for i in range(edge_indices.size(1)):
-        a, b = edge_indices[0, i].item(), edge_indices[1, i].item()
-        w = edge_weights[i].item()
-        edge_dict[(a, b)] = w
+    # Find the indices of the opposite edges (b, a)
+    reverse_indices = edge_indices.flip(0)
 
-    for i in range(edge_indices.size(1)):
-        a, b = edge_indices[0, i].item(), edge_indices[1, i].item()
-        w = edge_weights[i].item()
-        if (b, a) in edge_dict:
-            w_opposite = edge_dict[(b, a)]
-            avg_weight = (w + w_opposite) / 2
-            edge_dict[(a, b)] = avg_weight
-            edge_dict[(b, a)] = avg_weight
+    # Find the mask of the opposite edges (b, a) that exist in the input
+    mask = (edge_indices.unsqueeze(1) == reverse_indices.unsqueeze(2)).all(0).any(0)
 
-    symmetrized_weights = Tensor(
-        [edge_dict[(a, b)] for a, b in zip(edge_indices[0], edge_indices[1])]
+    # Compute the symmetrized weights using indexing and broadcasting
+    symmetrized_weights = (edge_weights + edge_weights[mask]) / 2
+
+    # Construct a new tensor with the symmetrized weights
+    symmetrized_weights_all = Tensor(
+        torch.zeros(
+            edge_weights.size(0), dtype=edge_weights.dtype, device=edge_weights.device
+        )
     )
-    return symmetrized_weights
+    symmetrized_weights_all[mask] = symmetrized_weights
+    return symmetrized_weights_all
